@@ -83,11 +83,32 @@ p {
   font-weight: 500;
   padding-bottom: 0.4rem;
   border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .nav-link.active {
   color: var(--ink);
   border-color: var(--primary);
+}
+
+.nav-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .content {
