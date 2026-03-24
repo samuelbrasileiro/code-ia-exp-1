@@ -53,7 +53,13 @@ export default function GeneratePdf() {
             <div key={exam.id} className="list-item">
               <div>
                 <p className="title">{exam.title}</p>
+                <p className="muted">
+                  {exam.subject} • {exam.teacher} • {exam.date}
+                </p>
                 <p className="muted">Questions: {exam.questionIds.length}</p>
+                <p className="muted">
+                  Labels: {exam.answerLabelingMode === "letters" ? "Letters" : "Powers of Two"}
+                </p>
                 {variants[exam.id] ? (
                   <p className="muted">Variant: {variants[exam.id].variantId}</p>
                 ) : null}

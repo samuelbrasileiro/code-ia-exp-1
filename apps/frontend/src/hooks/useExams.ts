@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Exam } from "@shared/types";
-import { createExam, fetchExams } from "../api";
+import type { AnswerLabelingMode, Exam } from "@shared/types";
+import { createExam, deleteExam, fetchExams, updateExam } from "../api";
 
 type ExamPayload = {
   title: string;
+  subject: string;
+  teacher: string;
+  date: string;
+  answerLabelingMode: AnswerLabelingMode;
   questionIds: string[];
 };
 
@@ -29,10 +33,29 @@ export default function useExams() {
     reload();
   }, [reload]);
 
-  const add = useCallback(async (payload: ExamPayload) => {
-    await createExam(payload);
-    await reload();
-  }, [reload]);
+  const add = useCallback(
+    async (payload: ExamPayload) => {
+      await createExam(payload);
+      await reload();
+    },
+    [reload]
+  );
 
-  return { exams, loading, error, reload, add };
+  const update = useCallback(
+    async (id: string, payload: ExamPayload) => {
+      await updateExam(id, payload);
+      await reload();
+    },
+    [reload]
+  );
+
+  const remove = useCallback(
+    async (id: string) => {
+      await deleteExam(id);
+      await reload();
+    },
+    [reload]
+  );
+
+  return { exams, loading, error, reload, add, update, remove };
 }

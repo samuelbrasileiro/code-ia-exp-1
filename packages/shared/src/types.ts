@@ -12,9 +12,15 @@ export type Question = {
   createdAt: string;
 };
 
+export type AnswerLabelingMode = "letters" | "powersOfTwo";
+
 export type Exam = {
   id: string;
   title: string;
+  subject: string;
+  teacher: string;
+  date: string;
+  answerLabelingMode: AnswerLabelingMode;
   questionIds: string[];
   createdAt: string;
 };

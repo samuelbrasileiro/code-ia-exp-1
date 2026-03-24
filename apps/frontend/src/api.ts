@@ -1,4 +1,4 @@
-import type { Exam, ExamVariant, Question } from "@shared/types";
+import type { AnswerLabelingMode, Exam, ExamVariant, Question } from "@shared/types";
 
 const BASE = "/api";
 
@@ -64,6 +64,10 @@ export async function fetchExams(): Promise<Exam[]> {
 
 export async function createExam(payload: {
   title: string;
+  subject: string;
+  teacher: string;
+  date: string;
+  answerLabelingMode: AnswerLabelingMode;
   questionIds: string[];
 }): Promise<Exam> {
   const res = await fetch(`${BASE}/exams`, {
@@ -75,6 +79,35 @@ export async function createExam(payload: {
     throw new Error("Failed to create exam");
   }
   return res.json();
+}
+
+export async function updateExam(
+  id: string,
+  payload: {
+    title: string;
+    subject: string;
+    teacher: string;
+    date: string;
+    answerLabelingMode: AnswerLabelingMode;
+    questionIds: string[];
+  }
+): Promise<Exam> {
+  const res = await fetch(`${BASE}/exams/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    throw new Error("Failed to update exam");
+  }
+  return res.json();
+}
+
+export async function deleteExam(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/exams/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error("Failed to delete exam");
+  }
 }
 
 export async function createVariant(examId: string): Promise<ExamVariant> {

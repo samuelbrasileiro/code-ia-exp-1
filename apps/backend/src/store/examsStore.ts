@@ -1,10 +1,24 @@
-import type { Exam } from "../../../packages/shared/src/types.js";
+import type { AnswerLabelingMode, Exam } from "../../../packages/shared/src/types.js";
 import { readJson, writeJson } from "./fileStore.js";
 
 const FILE = "exams.json";
 
+type LegacyExam = Exam & {
+  subject?: string;
+  teacher?: string;
+  date?: string;
+  answerLabelingMode?: AnswerLabelingMode;
+};
+
 export async function getExams(): Promise<Exam[]> {
-  return readJson<Exam[]>(FILE, []);
+  const data = await readJson<LegacyExam[]>(FILE, []);
+  return data.map((exam) => ({
+    ...exam,
+    subject: exam.subject ?? "",
+    teacher: exam.teacher ?? "",
+    date: exam.date ?? "",
+    answerLabelingMode: exam.answerLabelingMode ?? "letters"
+  }));
 }
 
 export async function saveExams(exams: Exam[]): Promise<void> {

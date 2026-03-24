@@ -11,6 +11,10 @@ const router = Router();
 
 const examSchema = z.object({
   title: z.string().min(1),
+  subject: z.string().min(1),
+  teacher: z.string().min(1),
+  date: z.string().min(1),
+  answerLabelingMode: z.enum(["letters", "powersOfTwo"]),
   questionIds: z.array(z.string().min(1)).min(1)
 });
 
@@ -26,6 +30,23 @@ const variantSchema: z.ZodType<ExamVariant> = z.object({
     )
     .min(1)
 });
+
+function labelForChoice(index: number, mode: Exam["answerLabelingMode"]): string {
+  if (mode === "powersOfTwo") {
+    return String(2 ** index);
+  }
+  return String.fromCharCode(65 + index);
+}
+
+async function validateQuestionIds(questionIds: string[]) {
+  const questions = await getQuestions();
+  const knownIds = new Set(questions.map((q) => q.id));
+  const missing = questionIds.filter((id) => !knownIds.has(id));
+  if (missing.length > 0) {
+    return missing;
+  }
+  return [];
+}
 
 router.get("/", async (_req, res) => {
   const exams = await getExams();
@@ -47,10 +68,8 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { title, questionIds } = parsed.data;
-  const questions = await getQuestions();
-  const knownIds = new Set(questions.map((q) => q.id));
-  const missing = questionIds.filter((id) => !knownIds.has(id));
+  const { title, subject, teacher, date, answerLabelingMode, questionIds } = parsed.data;
+  const missing = await validateQuestionIds(questionIds);
   if (missing.length > 0) {
     return res.status(400).json({ error: "Unknown questionIds", missing });
   }
@@ -59,6 +78,10 @@ router.post("/", async (req, res) => {
   const exam: Exam = {
     id: createId(),
     title,
+    subject,
+    teacher,
+    date,
+    answerLabelingMode,
     questionIds,
     createdAt: now
   };
@@ -67,6 +90,50 @@ router.post("/", async (req, res) => {
   exams.push(exam);
   await saveExams(exams);
   res.status(201).json(exam);
+});
+
+router.put("/:id", async (req, res) => {
+  const parsed = examSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+
+  const { title, subject, teacher, date, answerLabelingMode, questionIds } = parsed.data;
+  const missing = await validateQuestionIds(questionIds);
+  if (missing.length > 0) {
+    return res.status(400).json({ error: "Unknown questionIds", missing });
+  }
+
+  const exams = await getExams();
+  const index = exams.findIndex((item) => item.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Exam not found" });
+  }
+
+  const updated: Exam = {
+    id: exams[index].id,
+    title,
+    subject,
+    teacher,
+    date,
+    answerLabelingMode,
+    questionIds,
+    createdAt: exams[index].createdAt
+  };
+
+  exams[index] = updated;
+  await saveExams(exams);
+  res.json(updated);
+});
+
+router.delete("/:id", async (req, res) => {
+  const exams = await getExams();
+  const next = exams.filter((item) => item.id !== req.params.id);
+  if (next.length === exams.length) {
+    return res.status(404).json({ error: "Exam not found" });
+  }
+  await saveExams(next);
+  res.status(204).send();
 });
 
 router.post("/:id/variant", async (req, res) => {
@@ -116,6 +183,13 @@ router.post("/:id/pdf", async (req, res) => {
   doc.pipe(res);
 
   doc.fontSize(18).text(exam.title, { align: "center" });
+  doc.moveDown(0.5);
+  doc.fontSize(11).fillColor("#555555");
+  doc.text(`Subject: ${exam.subject}`);
+  doc.text(`Teacher: ${exam.teacher}`);
+  doc.text(`Date: ${exam.date}`);
+  doc.text(`Answer labels: ${exam.answerLabelingMode === "letters" ? "Letters" : "Powers of Two"}`);
+  doc.fillColor("#000000");
   doc.moveDown();
 
   variant.questions.forEach((entry, index) => {
@@ -131,7 +205,7 @@ router.post("/:id/pdf", async (req, res) => {
       .filter(Boolean) as Question["choices"];
 
     choices.forEach((choice, choiceIndex) => {
-      const label = String.fromCharCode(65 + choiceIndex);
+      const label = labelForChoice(choiceIndex, exam.answerLabelingMode);
       doc.text(`   ${label}. ${choice.text}`);
     });
     doc.moveDown();
