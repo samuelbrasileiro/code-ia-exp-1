@@ -182,23 +182,59 @@ router.post("/:id/pdf", async (req, res) => {
   const doc = new PDFDocument({ margin: 50, size: "A4" });
   doc.pipe(res);
 
-  doc.fontSize(18).text(exam.title, { align: "center" });
-  doc.moveDown(0.5);
-  doc.fontSize(11).fillColor("#555555");
+  const pageWidth = doc.page.width;
+  const left = doc.page.margins.left;
+  const right = pageWidth - doc.page.margins.right;
+  const contentWidth = right - left;
+
+  const drawSectionDivider = () => {
+    const y = doc.y;
+    doc
+      .strokeColor("#DDDDDD")
+      .lineWidth(1)
+      .moveTo(left, y)
+      .lineTo(right, y)
+      .stroke();
+    doc.moveDown(0.6);
+    doc.strokeColor("#000000");
+  };
+
+  const drawAnswerLine = (mode: Exam["answerLabelingMode"]) => {
+    const label = mode === "powersOfTwo" ? "Sum:" : "Answer:";
+    doc.fontSize(11).fillColor("#333333").text(label, { continued: true });
+
+    const startX = doc.x + 6;
+    const y = doc.y + 2;
+    const lineWidth = mode === "powersOfTwo" ? contentWidth * 0.5 : contentWidth * 0.35;
+    doc
+      .strokeColor("#333333")
+      .lineWidth(1)
+      .moveTo(startX, y)
+      .lineTo(startX + lineWidth, y)
+      .stroke();
+    doc.fillColor("#000000");
+    doc.moveDown(0.8);
+  };
+
+  doc.font("Helvetica-Bold").fontSize(18).text(exam.title, { align: "center" });
+  doc.moveDown(0.4);
+  doc.font("Helvetica").fontSize(11).fillColor("#555555");
   doc.text(`Subject: ${exam.subject}`);
   doc.text(`Teacher: ${exam.teacher}`);
   doc.text(`Date: ${exam.date}`);
   doc.text(`Answer labels: ${exam.answerLabelingMode === "letters" ? "Letters" : "Powers of Two"}`);
   doc.fillColor("#000000");
-  doc.moveDown();
+  doc.moveDown(0.6);
+  drawSectionDivider();
 
   variant.questions.forEach((entry, index) => {
     const question = questionMap.get(entry.questionId);
     if (!question) {
       return;
     }
-    doc.fontSize(12).text(`${index + 1}. ${question.prompt}`);
-    doc.moveDown(0.4);
+    doc.font("Helvetica-Bold").fontSize(12).text(`${index + 1}. ${question.prompt}`);
+    doc.font("Helvetica");
+    doc.moveDown(0.35);
 
     const choices = entry.shuffledChoiceIds
       .map((choiceId) => question.choices.find((c) => c.id === choiceId))
@@ -206,9 +242,13 @@ router.post("/:id/pdf", async (req, res) => {
 
     choices.forEach((choice, choiceIndex) => {
       const label = labelForChoice(choiceIndex, exam.answerLabelingMode);
-      doc.text(`   ${label}. ${choice.text}`);
+      doc.text(`   ${label}. ${choice.text}`, {
+        indent: 12
+      });
     });
-    doc.moveDown();
+    doc.moveDown(0.4);
+    drawAnswerLine(exam.answerLabelingMode);
+    drawSectionDivider();
   });
 
   doc.end();
