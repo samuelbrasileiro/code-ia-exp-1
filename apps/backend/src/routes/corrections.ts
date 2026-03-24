@@ -10,14 +10,33 @@ type KeyRow = {
   examId: string;
   variantId: string;
   questionId: string;
-  correctChoiceId: string;
+  correctChoiceIds?: string;
 };
 
 type AnswerRow = {
   studentId: string;
   questionId: string;
-  selectedChoiceId: string;
+  selectedChoiceIds?: string;
+  selectedChoiceId?: string;
 };
+
+function parseIds(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split("|")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const setA = new Set(a);
+  return b.every((item) => setA.has(item));
+}
 
 router.post(
   "/",
@@ -54,7 +73,7 @@ router.post(
     const variantId = keyRows[0].variantId;
 
     const keyMap = new Map(
-      keyRows.map((row) => [row.questionId, row.correctChoiceId])
+      keyRows.map((row) => [row.questionId, parseIds(row.correctChoiceIds)])
     );
 
     const answersByStudent = new Map<string, AnswerRow[]>();
@@ -69,15 +88,16 @@ router.post(
     answersByStudent.forEach((rows, studentId) => {
       let correct = 0;
       const details = rows.map((row) => {
-        const expected = keyMap.get(row.questionId);
-        const isCorrect = expected === row.selectedChoiceId;
+        const expected = keyMap.get(row.questionId) ?? [];
+        const selected = parseIds(row.selectedChoiceIds ?? row.selectedChoiceId);
+        const isCorrect = sameSet(selected, expected);
         if (isCorrect) {
           correct += 1;
         }
         return {
           questionId: row.questionId,
           isCorrect,
-          selectedChoiceId: row.selectedChoiceId
+          selectedChoiceIds: selected
         };
       });
       results.push({

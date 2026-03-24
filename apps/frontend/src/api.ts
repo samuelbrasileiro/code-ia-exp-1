@@ -13,7 +13,7 @@ export async function fetchQuestions(): Promise<Question[]> {
 export async function createQuestion(payload: {
   prompt: string;
   choices: string[];
-  correctIndex: number;
+  correctIndexes: number[];
   tags?: string[];
 }): Promise<Question> {
   const res = await fetch(`${BASE}/questions`, {
@@ -32,7 +32,7 @@ export async function updateQuestion(
   payload: {
     prompt: string;
     choices: string[];
-    correctIndex: number;
+    correctIndexes: number[];
     tags?: string[];
   }
 ): Promise<Question> {

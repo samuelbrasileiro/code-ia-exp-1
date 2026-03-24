@@ -4,12 +4,25 @@ import PageHeader from "../components/PageHeader";
 import SectionCard from "../components/SectionCard";
 import useQuestions from "../hooks/useQuestions";
 
+type ChoiceDraft = {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+};
+
 const emptyForm = {
   prompt: "",
-  choicesText: "",
-  correctIndex: 0,
-  tagsText: ""
+  tags: [] as string[],
+  tagInput: "",
+  choices: [
+    { id: "choice-1", text: "", isCorrect: false },
+    { id: "choice-2", text: "", isCorrect: false }
+  ] as ChoiceDraft[]
 };
+
+function createChoice(id: string): ChoiceDraft {
+  return { id, text: "", isCorrect: false };
+}
 
 export default function Questions() {
   const { questions, loading, error, add, update, remove } = useQuestions();
@@ -18,22 +31,48 @@ export default function Questions() {
   const [status, setStatus] = useState<string>("");
 
   const choices = useMemo(
-    () =>
-      form.choicesText
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0),
-    [form.choicesText]
+    () => form.choices.map((choice) => choice.text.trim()).filter((text) => text.length > 0),
+    [form.choices]
   );
 
-  const tags = useMemo(
-    () =>
-      form.tagsText
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0),
-    [form.tagsText]
-  );
+  function updateChoice(id: string, patch: Partial<ChoiceDraft>) {
+    setForm((prev) => ({
+      ...prev,
+      choices: prev.choices.map((choice) =>
+        choice.id === id ? { ...choice, ...patch } : choice
+      )
+    }));
+  }
+
+  function addChoice() {
+    setForm((prev) => ({
+      ...prev,
+      choices: [...prev.choices, createChoice(`choice-${prev.choices.length + 1}`)]
+    }));
+  }
+
+  function removeChoice(id: string) {
+    setForm((prev) => ({
+      ...prev,
+      choices: prev.choices.filter((choice) => choice.id !== id)
+    }));
+  }
+
+  function addTag() {
+    const value = form.tagInput.trim();
+    if (!value) {
+      return;
+    }
+    if (form.tags.includes(value)) {
+      setForm((prev) => ({ ...prev, tagInput: "" }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, tags: [...prev.tags, value], tagInput: "" }));
+  }
+
+  function removeTag(tag: string) {
+    setForm((prev) => ({ ...prev, tags: prev.tags.filter((item) => item !== tag) }));
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -43,20 +82,31 @@ export default function Questions() {
       setStatus("Question prompt is required.");
       return;
     }
+
     if (choices.length < 2) {
       setStatus("Please provide at least two choices.");
       return;
     }
-    if (form.correctIndex < 0 || form.correctIndex >= choices.length) {
-      setStatus("Correct index is out of range.");
+
+    const correctIndexes = form.choices
+      .map((choice, index) => (choice.isCorrect ? index : -1))
+      .filter((index) => index >= 0);
+
+    if (correctIndexes.length === 0) {
+      setStatus("Select at least one correct choice.");
+      return;
+    }
+
+    if (correctIndexes.some((index) => index >= choices.length)) {
+      setStatus("Remove empty choices or fill them in.");
       return;
     }
 
     const payload = {
       prompt: form.prompt.trim(),
-      choices,
-      correctIndex: form.correctIndex,
-      tags: tags.length > 0 ? tags : undefined
+      choices: form.choices.map((choice) => choice.text.trim()).filter((text) => text.length > 0),
+      correctIndexes,
+      tags: form.tags.length > 0 ? form.tags : undefined
     };
 
     if (editingId) {
@@ -70,15 +120,18 @@ export default function Questions() {
   }
 
   function startEdit(question: Question) {
-    const correctIndex = question.choices.findIndex(
-      (choice) => choice.id === question.correctChoiceId
-    );
+    const draftChoices = question.choices.map((choice, index) => ({
+      id: `choice-${index + 1}`,
+      text: choice.text,
+      isCorrect: question.correctChoiceIds.includes(choice.id)
+    }));
+
     setEditingId(question.id);
     setForm({
       prompt: question.prompt,
-      choicesText: question.choices.map((choice) => choice.text).join("\n"),
-      correctIndex: correctIndex === -1 ? 0 : correctIndex,
-      tagsText: (question.tags ?? []).join(", ")
+      tags: question.tags ?? [],
+      tagInput: "",
+      choices: draftChoices
     });
   }
 
@@ -103,36 +156,81 @@ export default function Questions() {
               required
             />
           </label>
-          <label>
-            Choices (one per line)
-            <textarea
-              value={form.choicesText}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, choicesText: event.target.value }))
-              }
-              rows={4}
-              required
-            />
-          </label>
-          <label>
-            Correct Choice Index (starts at 0)
-            <input
-              type="number"
-              min={0}
-              value={form.correctIndex}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, correctIndex: Number(event.target.value) }))
-              }
-            />
-          </label>
-          <label>
-            Tags (comma separated)
-            <input
-              type="text"
-              value={form.tagsText}
-              onChange={(event) => setForm((prev) => ({ ...prev, tagsText: event.target.value }))}
-            />
-          </label>
+
+          <div className="field-group">
+            <div className="field-group-header">
+              <div>
+                <span className="field-label">Choices</span>
+                <span className="field-hint">Mark all correct answers and remove extra rows.</span>
+              </div>
+              <button type="button" className="secondary" onClick={addChoice}>
+                Add Choice
+              </button>
+            </div>
+            <div className="choice-list">
+              {form.choices.map((choice, index) => (
+                <div className="choice-row" key={choice.id}>
+                  <label className="choice-check">
+                    <input
+                      type="checkbox"
+                      checked={choice.isCorrect}
+                      onChange={(event) =>
+                        updateChoice(choice.id, { isCorrect: event.target.checked })
+                      }
+                    />
+                    <span>Correct</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={choice.text}
+                    onChange={(event) => updateChoice(choice.id, { text: event.target.value })}
+                    placeholder={`Choice ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => removeChoice(choice.id)}
+                    aria-label="Remove choice"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="field-group">
+            <div className="field-group-header">
+              <div>
+                <span className="field-label">Tags</span>
+                <span className="field-hint">Add one tag at a time.</span>
+              </div>
+            </div>
+            <div className="tag-input-row">
+              <input
+                type="text"
+                value={form.tagInput}
+                onChange={(event) => setForm((prev) => ({ ...prev, tagInput: event.target.value }))}
+                placeholder="Add a tag"
+              />
+              <button type="button" className="secondary" onClick={addTag}>
+                Add Tag
+              </button>
+            </div>
+            {form.tags.length > 0 ? (
+              <div className="tag-list">
+                {form.tags.map((tag) => (
+                  <span key={tag} className="tag">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} aria-label="Remove tag">
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="actions">
             <button type="submit" className="primary">
               {editingId ? "Save Question" : "Add Question"}
@@ -157,8 +255,10 @@ export default function Questions() {
         {questions.length === 0 && !loading ? <p className="muted">No questions yet.</p> : null}
         <div className="list">
           {questions.map((question) => {
-            const correctIndex = question.choices.findIndex(
-              (choice) => choice.id === question.correctChoiceId
+            const correctIndexesSet = new Set(
+              question.choices
+                .map((choice, index) => (question.correctChoiceIds.includes(choice.id) ? index : -1))
+                .filter((index) => index >= 0)
             );
             return (
               <div className="list-item" key={question.id}>
@@ -167,7 +267,7 @@ export default function Questions() {
                   <ul>
                     {question.choices.map((choice, index) => (
                       <li key={choice.id}>
-                        {index === correctIndex ? "✓ " : ""}
+                        {correctIndexesSet.has(index) ? "✓ " : ""}
                         {choice.text}
                       </li>
                     ))}

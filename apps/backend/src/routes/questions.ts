@@ -9,9 +9,20 @@ const router = Router();
 const questionSchema = z.object({
   prompt: z.string().min(1),
   choices: z.array(z.string().min(1)).min(2),
-  correctIndex: z.number().int().nonnegative(),
+  correctIndexes: z.array(z.number().int().nonnegative()).min(1),
   tags: z.array(z.string().min(1)).optional()
 });
+
+function validateIndexes(indexes: number[], choicesLength: number): string | null {
+  const unique = new Set(indexes);
+  if (unique.size !== indexes.length) {
+    return "Duplicate correct indexes are not allowed";
+  }
+  if (indexes.some((value) => value < 0 || value >= choicesLength)) {
+    return "correctIndexes out of range";
+  }
+  return null;
+}
 
 router.get("/", async (_req, res) => {
   const questions = await getQuestions();
@@ -24,9 +35,10 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { prompt, choices, correctIndex, tags } = parsed.data;
-  if (correctIndex >= choices.length) {
-    return res.status(400).json({ error: "correctIndex out of range" });
+  const { prompt, choices, correctIndexes, tags } = parsed.data;
+  const indexError = validateIndexes(correctIndexes, choices.length);
+  if (indexError) {
+    return res.status(400).json({ error: indexError });
   }
 
   const now = new Date().toISOString();
@@ -34,11 +46,12 @@ router.post("/", async (req, res) => {
     id: createId(),
     prompt,
     choices: choices.map((text) => ({ id: createId(), text })),
-    correctChoiceId: "",
+    correctChoiceIds: [],
     tags,
     createdAt: now
   };
-  question.correctChoiceId = question.choices[correctIndex].id;
+
+  question.correctChoiceIds = correctIndexes.map((index) => question.choices[index].id);
 
   const questions = await getQuestions();
   questions.push(question);
@@ -52,9 +65,10 @@ router.put("/:id", async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { prompt, choices, correctIndex, tags } = parsed.data;
-  if (correctIndex >= choices.length) {
-    return res.status(400).json({ error: "correctIndex out of range" });
+  const { prompt, choices, correctIndexes, tags } = parsed.data;
+  const indexError = validateIndexes(correctIndexes, choices.length);
+  if (indexError) {
+    return res.status(400).json({ error: indexError });
   }
 
   const questions = await getQuestions();
@@ -67,11 +81,11 @@ router.put("/:id", async (req, res) => {
     id: questions[index].id,
     prompt,
     choices: choices.map((text) => ({ id: createId(), text })),
-    correctChoiceId: "",
+    correctChoiceIds: [],
     tags,
     createdAt: questions[index].createdAt
   };
-  updated.correctChoiceId = updated.choices[correctIndex].id;
+  updated.correctChoiceIds = correctIndexes.map((value) => updated.choices[value].id);
 
   questions[index] = updated;
   await saveQuestions(questions);

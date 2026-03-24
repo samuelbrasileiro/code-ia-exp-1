@@ -7,7 +7,7 @@ export type Question = {
   id: string;
   prompt: string;
   choices: Choice[];
-  correctChoiceId: string;
+  correctChoiceIds: string[];
   tags?: string[];
   createdAt: string;
 };
@@ -33,7 +33,7 @@ export type AnswerKey = {
   variantId: string;
   answers: {
     questionId: string;
-    correctChoiceId: string;
+    correctChoiceIds: string[];
   }[];
 };
 
@@ -45,6 +45,6 @@ export type CorrectionResult = {
   details: {
     questionId: string;
     isCorrect: boolean;
-    selectedChoiceId: string;
+    selectedChoiceIds: string[];
   }[];
 };

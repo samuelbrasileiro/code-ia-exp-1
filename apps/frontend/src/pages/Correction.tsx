@@ -9,7 +9,7 @@ type CorrectionResponse = {
   results: {
     studentId: string;
     score: number;
-    details: { questionId: string; isCorrect: boolean }[];
+    details: { questionId: string; isCorrect: boolean; selectedChoiceIds: string[] }[];
   }[];
 };
 
@@ -42,8 +42,9 @@ export default function Correction() {
       <SectionCard title="Upload CSVs">
         <p className="muted">
           CSV formats:
-          <br />- Answer key: <code>examId,variantId,questionId,correctChoiceId</code>
-          <br />- Student answers: <code>studentId,questionId,selectedChoiceId</code>
+          <br />- Answer key: <code>examId,variantId,questionId,correctChoiceIds</code>
+          <br />- Student answers: <code>studentId,questionId,selectedChoiceIds</code>
+          <br />Use a pipe (<code>|</code>) to separate multiple choices in a cell.
         </p>
         <form onSubmit={handleSubmit} className="form">
           <label>

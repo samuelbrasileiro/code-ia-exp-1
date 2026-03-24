@@ -5,7 +5,7 @@ import { createQuestion, deleteQuestion, fetchQuestions, updateQuestion } from "
 type QuestionPayload = {
   prompt: string;
   choices: string[];
-  correctIndex: number;
+  correctIndexes: number[];
   tags?: string[];
 };
 
@@ -31,20 +31,29 @@ export default function useQuestions() {
     reload();
   }, [reload]);
 
-  const add = useCallback(async (payload: QuestionPayload) => {
-    await createQuestion(payload);
-    await reload();
-  }, [reload]);
+  const add = useCallback(
+    async (payload: QuestionPayload) => {
+      await createQuestion(payload);
+      await reload();
+    },
+    [reload]
+  );
 
-  const update = useCallback(async (id: string, payload: QuestionPayload) => {
-    await updateQuestion(id, payload);
-    await reload();
-  }, [reload]);
+  const update = useCallback(
+    async (id: string, payload: QuestionPayload) => {
+      await updateQuestion(id, payload);
+      await reload();
+    },
+    [reload]
+  );
 
-  const remove = useCallback(async (id: string) => {
-    await deleteQuestion(id);
-    await reload();
-  }, [reload]);
+  const remove = useCallback(
+    async (id: string) => {
+      await deleteQuestion(id);
+      await reload();
+    },
+    [reload]
+  );
 
   return { questions, loading, error, reload, add, update, remove };
 }

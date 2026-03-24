@@ -154,14 +154,14 @@ router.post("/:id/answer-key", async (req, res) => {
   const questions = await getQuestions();
   const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-  const lines = ["examId,variantId,questionId,correctChoiceId"];
+  const lines = ["examId,variantId,questionId,correctChoiceIds"];
   variant.questions.forEach((entry) => {
     const question = questionMap.get(entry.questionId);
     if (!question) {
       return;
     }
     lines.push(
-      `${variant.examId},${variant.variantId},${question.id},${question.correctChoiceId}`
+      `${variant.examId},${variant.variantId},${question.id},${question.correctChoiceIds.join("|")}`
     );
   });
 
