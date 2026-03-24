@@ -13,15 +13,19 @@ export default function Home() {
       <SectionCard title="Quick Start">
         <div className="grid-links">
           <Link className="pill" to="/questions">
+            <span className="icon-sq icon-blue">Q</span>
             1. Add Questions
           </Link>
           <Link className="pill" to="/exams">
+            <span className="icon-sq icon-green">E</span>
             2. Create an Exam
           </Link>
           <Link className="pill" to="/generate">
+            <span className="icon-sq icon-purple">P</span>
             3. Generate PDFs
           </Link>
           <Link className="pill" to="/correction">
+            <span className="icon-sq icon-orange">C</span>
             4. Correct Answers
           </Link>
         </div>
