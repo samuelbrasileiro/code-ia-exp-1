@@ -1,0 +1,205 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Fraunces:wght@500;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --bg: #f3efe8;
+  --card: #ffffff;
+  --ink: #1f1b16;
+  --muted: #6f665b;
+  --accent: #c96d2d;
+  --accent-dark: #9a4f1c;
+  --border: #e4d9cc;
+  --shadow: 0 16px 40px rgba(35, 25, 15, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  background: radial-gradient(circle at top, #faf6ef, #ece5d7 65%, #e2d7c7);
+  color: var(--ink);
+}
+
+h1,
+h2 {
+  font-family: "Fraunces", serif;
+  margin: 0 0 0.6rem 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.hero {
+  background: linear-gradient(135deg, #ffffff, #f3ebe0);
+  border-radius: 24px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.eyebrow {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent-dark);
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+}
+
+.sub {
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.status {
+  background: #fff2e3;
+  border: 1px solid #f0d7bf;
+  color: var(--accent-dark);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+textarea {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fffaf4;
+}
+
+button {
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(35, 25, 15, 0.15);
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.list {
+  display: grid;
+  gap: 1rem;
+}
+
+.list-item {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  background: #fffdf9;
+}
+
+.list-item ul {
+  margin: 0.4rem 0 0 1.2rem;
+  padding: 0;
+}
+
+.title {
+  font-weight: 600;
+  margin: 0 0 0.3rem 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fffdf9;
+}
+
+.ok {
+  color: #2b7a3d;
+  margin-right: 0.5rem;
+}
+
+.bad {
+  color: #b33a2f;
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .hero,
+  .card {
+    padding: 1.5rem;
+  }
+
+  .list-item {
+    flex-direction: column;
+  }
+}

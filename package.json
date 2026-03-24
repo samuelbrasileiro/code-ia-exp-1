@@ -1,0 +1,12 @@
+{
+  "name": "exam-builder",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:backend": "npm -w apps/backend run dev",
+    "dev:frontend": "npm -w apps/frontend run dev",
+    "build:backend": "npm -w apps/backend run build",
+    "build:frontend": "npm -w apps/frontend run build",
+    "build": "npm run build:backend && npm run build:frontend"
+  }
+}
