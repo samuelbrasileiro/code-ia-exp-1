@@ -1,5 +1,5 @@
-Feature: Answer Key CSV In The New Format
-  Scenario: Answer key CSV uses the new header format
+Feature: Answer Key CSV Format
+  Scenario: Answer key CSV uses the header format
     Given an exam exists with 2 questions
       And I generated 2 variants for the exam
     When I extract the answer key CSV from the zip

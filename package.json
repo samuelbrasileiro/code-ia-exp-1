@@ -7,6 +7,7 @@
     "dev:frontend": "npm -w apps/frontend run dev",
     "build:backend": "npm -w apps/backend run build",
     "build:frontend": "npm -w apps/frontend run build",
-    "build": "npm run build:backend && npm run build:frontend"
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:acceptance": "npm -w apps/backend run test:acceptance"
   }
 }
