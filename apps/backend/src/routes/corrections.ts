@@ -6,28 +6,58 @@ import type { CorrectionResult } from "../../../packages/shared/src/types.js";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-type KeyRow = {
-  examId: string;
-  variantId: string;
-  questionId: string;
-  correctChoiceIds?: string;
-};
+type KeyRow = Record<string, string>;
 
-type AnswerRow = {
-  studentId: string;
-  questionId: string;
-  selectedChoiceIds?: string;
-  selectedChoiceId?: string;
-};
+type AnswerRow = Record<string, string>;
 
-function parseIds(value: string | undefined): string[] {
+type CorrectionMode = "strict" | "lenient";
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function detectDelimiter(buffer: Buffer): string {
+  const sample = buffer.toString("utf8", 0, 2048);
+  const commaCount = (sample.match(/,/g) ?? []).length;
+  const semicolonCount = (sample.match(/;/g) ?? []).length;
+  return semicolonCount > commaCount ? ";" : ",";
+}
+
+function parseDelimited(value: string | undefined): string[] {
   if (!value) {
     return [];
   }
   return value
-    .split("|")
+    .split(/[|,]/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+function parseNumericSum(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.includes("|") || trimmed.includes(",")) {
+    const parts = parseDelimited(trimmed);
+    if (parts.length === 0) {
+      return null;
+    }
+    let total = 0;
+    for (const part of parts) {
+      const num = Number(part);
+      if (Number.isNaN(num)) {
+        return null;
+      }
+      total += num;
+    }
+    return total;
+  }
+  const num = Number(trimmed);
+  return Number.isNaN(num) ? null : num;
 }
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -56,60 +86,147 @@ router.post(
     const keyRows = parse(keyFile.buffer, {
       columns: true,
       skip_empty_lines: true,
-      trim: true
+      trim: true,
+      delimiter: detectDelimiter(keyFile.buffer)
     }) as KeyRow[];
 
     const answerRows = parse(answersFile.buffer, {
       columns: true,
       skip_empty_lines: true,
-      trim: true
+      trim: true,
+      delimiter: detectDelimiter(answersFile.buffer)
     }) as AnswerRow[];
 
     if (keyRows.length === 0) {
       return res.status(400).json({ error: "Answer key CSV is empty" });
     }
+    if (answerRows.length === 0) {
+      return res.status(400).json({ error: "Student answers CSV is empty" });
+    }
 
-    const examId = keyRows[0].examId;
-    const variantId = keyRows[0].variantId;
+    const keySample = keyRows[0] ?? {};
+    const keyQuestionColumns = Object.keys(keySample)
+      .map((key) => ({ key, match: key.match(/^question(\d+)-answer$/i) }))
+      .filter((item) => item.match)
+      .sort((a, b) => Number(a.match?.[1]) - Number(b.match?.[1]))
+      .map((item) => item.key);
 
-    const keyMap = new Map(
-      keyRows.map((row) => [row.questionId, parseIds(row.correctChoiceIds)])
-    );
+    if (!keySample["exam-id"]) {
+      return res
+        .status(400)
+        .json({ error: "Answer key CSV must include an exam-id column" });
+    }
 
-    const answersByStudent = new Map<string, AnswerRow[]>();
-    answerRows.forEach((row) => {
-      if (!answersByStudent.has(row.studentId)) {
-        answersByStudent.set(row.studentId, []);
+    if (keyQuestionColumns.length === 0) {
+      return res.status(400).json({
+        error: "Answer key CSV must include columns question1-answer, question2-answer, ..."
+      });
+    }
+
+    const keyRowsByExamNumber = new Map<string, string[]>();
+    keyRows.forEach((row) => {
+      const examNumber = row["exam-id"]?.trim();
+      if (!examNumber) {
+        return;
       }
-      answersByStudent.get(row.studentId)?.push(row);
+      const expected = keyQuestionColumns.map((column) => row[column] ?? "");
+      keyRowsByExamNumber.set(examNumber, expected);
     });
 
+    if (keyRowsByExamNumber.size === 0) {
+      return res.status(400).json({ error: "Answer key CSV is missing exam-id values" });
+    }
+
+    const sampleRow = answerRows[0] ?? {};
+    const answerColumns = Object.keys(sampleRow)
+      .map((key) => ({ key, match: key.match(/^question(\d+)-answer$/i) }))
+      .filter((item) => item.match)
+      .sort((a, b) => Number(a.match?.[1]) - Number(b.match?.[1]))
+      .map((item) => item.key);
+
+    if (answerColumns.length === 0) {
+      return res
+        .status(400)
+        .json({
+          error: "Student answers CSV must include columns question1-answer, question2-answer, ..."
+        });
+    }
+
+    const missingExamNumbers = new Set<string>();
     const results: CorrectionResult[] = [];
-    answersByStudent.forEach((rows, studentId) => {
-      let correct = 0;
-      const details = rows.map((row) => {
-        const expected = keyMap.get(row.questionId) ?? [];
-        const selected = parseIds(row.selectedChoiceIds ?? row.selectedChoiceId);
-        const isCorrect = sameSet(selected, expected);
-        if (isCorrect) {
-          correct += 1;
+    const mode: CorrectionMode = req.body?.mode === "lenient" ? "lenient" : "strict";
+
+    answerRows.forEach((row) => {
+      const studentId = row.cpf?.trim();
+      const examNumber = row["exam-id"]?.trim();
+      if (!studentId || !examNumber) {
+        return;
+      }
+      const expectedSet = keyRowsByExamNumber.get(examNumber);
+      if (!expectedSet) {
+        missingExamNumbers.add(examNumber);
+        return;
+      }
+
+      let score = 0;
+      const details = expectedSet.map((expectedRaw, index) => {
+        const answerValue = row[answerColumns[index]] ?? "";
+        const expectedValue = expectedRaw.trim();
+        const expectedSum = expectedValue.match(/^\d+$/) ? Number(expectedValue) : null;
+        let isCorrect = false;
+        let selected: string[] = [];
+        let pointsAwarded = 0;
+
+        if (expectedSum !== null) {
+          const selectedSum = parseNumericSum(answerValue);
+          isCorrect = selectedSum !== null && selectedSum === expectedSum;
+          if (selectedSum !== null) {
+            selected = [String(selectedSum)];
+          }
+          pointsAwarded = isCorrect ? 1 : 0;
+        } else {
+          const expected = parseDelimited(expectedValue);
+          selected = parseDelimited(answerValue);
+          isCorrect = sameSet(selected, expected);
+          if (isCorrect) {
+            pointsAwarded = 1;
+          } else if (mode === "lenient") {
+            const expectedSetValues = new Set(expected);
+            const selectedSet = new Set(selected);
+            const intersectionSize = [...selectedSet].filter((item) =>
+              expectedSetValues.has(item)
+            ).length;
+            const unionSize = new Set([...expected, ...selected]).size;
+            pointsAwarded = unionSize === 0 ? 0 : intersectionSize / unionSize;
+            pointsAwarded = clamp(pointsAwarded, 0, 1);
+          }
         }
+
+        score += pointsAwarded;
         return {
-          questionId: row.questionId,
+          questionId: `Q${index + 1}`,
           isCorrect,
-          selectedChoiceIds: selected
+          selectedChoiceIds: selected,
+          pointsAwarded
         };
       });
+
       results.push({
-        examId,
-        variantId,
+        examNumber,
         studentId,
-        score: keyMap.size === 0 ? 0 : correct,
+        score,
         details
       });
     });
 
-    res.json({ examId, variantId, results });
+    if (missingExamNumbers.size > 0) {
+      return res.status(400).json({
+        error: "Unknown exam-id values in student answers CSV",
+        missing: Array.from(missingExamNumbers)
+      });
+    }
+
+    res.json({ results });
   }
 );
 

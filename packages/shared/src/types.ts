@@ -28,6 +28,7 @@ export type Exam = {
 export type ExamVariant = {
   examId: string;
   variantId: string;
+  examNumber: string;
   questions: {
     questionId: string;
     shuffledChoiceIds: string[];
@@ -44,14 +45,16 @@ export type AnswerKey = {
 };
 
 export type CorrectionResult = {
-  examId: string;
-  variantId: string;
+  examNumber: string;
+  examId?: string;
+  variantId?: string;
   studentId: string;
   score: number;
   details: {
     questionId: string;
     isCorrect: boolean;
     selectedChoiceIds: string[];
+    pointsAwarded?: number;
   }[];
 };
 

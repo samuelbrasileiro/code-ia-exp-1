@@ -696,7 +696,256 @@ button.cta {
     padding: 1.5rem;
   }
 
-  .panel-header {
-    flex-direction: column;
+.panel-header {
+  flex-direction: column;
+}
+}
+
+.grade-page .page-header {
+  margin-bottom: 2rem;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 960px) {
+  .grade-grid {
+    grid-template-columns: minmax(260px, 340px) 1fr;
   }
+}
+
+.grade-panel {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.grade-panel-title {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.grade-stack {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.grade-label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--ink);
+}
+
+.grade-radio-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.grade-radio {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.grade-radio input {
+  margin-top: 0.2rem;
+}
+
+.grade-subtext {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.grade-help {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+.grade-divider {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.grade-section-title {
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.grade-list {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.grade-list ul {
+  margin: 0.5rem 0 0 1rem;
+  padding: 0;
+}
+
+.grade-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 1.4rem;
+  text-align: center;
+  background: #f9fafb;
+  color: var(--muted);
+}
+
+.grade-dropzone input {
+  display: none;
+}
+
+.grade-dropzone label {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.grade-file-ok {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.grade-primary {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.grade-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.grade-secondary {
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: none;
+  background: #16a34a;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.grade-results {
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.grade-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.grade-table-wrapper {
+  overflow-x: auto;
+}
+
+.grade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.grade-table th,
+.grade-table td {
+  padding: 0.75rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.grade-table thead {
+  background: #f3f4f6;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.grade-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.grade-pill--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.grade-pill--mid {
+  background: #fef9c3;
+  color: #92400e;
+}
+
+.grade-pill--bad {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.grade-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.grade-summary-card {
+  border-radius: 14px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.grade-summary-card p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.grade-summary-card strong {
+  font-size: 1.6rem;
+}
+
+.grade-summary-card--blue {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+.grade-summary-card--green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.grade-summary-card--red {
+  background: #fee2e2;
+  color: #991b1b;
 }

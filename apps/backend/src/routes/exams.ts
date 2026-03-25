@@ -13,7 +13,7 @@ import { createId } from "../utils/id.js";
 import { getExams, saveExams } from "../store/examsStore.js";
 import { getQuestions } from "../store/questionsStore.js";
 import { appendPdfHistory, getPdfHistory } from "../store/pdfHistoryStore.js";
-import { createVariant } from "../services/variant.js";
+import { createSequentialExamNumber, createVariant } from "../services/variant.js";
 
 const router = Router();
 
@@ -29,6 +29,7 @@ const examSchema = z.object({
 const variantSchema: z.ZodType<ExamVariant> = z.object({
   examId: z.string().min(1),
   variantId: z.string().min(1),
+  examNumber: z.string().min(1),
   questions: z
     .array(
       z.object({
@@ -80,6 +81,22 @@ function renderExamPdf(
   const right = pageWidth - doc.page.margins.right;
   const contentWidth = right - left;
 
+  const drawFooter = () => {
+    const currentX = doc.x;
+    const currentY = doc.y;
+    const footerY = doc.page.height - doc.page.margins.bottom - 12;
+    doc.save();
+    doc.font("Helvetica").fontSize(9).fillColor("#666666");
+    doc.text(`Exam number: ${variant.examNumber}`, left, footerY, {
+      width: contentWidth,
+      align: "center",
+      lineBreak: false
+    });
+    doc.restore();
+    doc.x = currentX;
+    doc.y = currentY;
+  };
+
   const drawSectionDivider = () => {
     const y = doc.y;
     doc
@@ -108,6 +125,9 @@ function renderExamPdf(
     doc.fillColor("#000000");
     doc.moveDown(0.8);
   };
+
+  doc.on("pageAdded", drawFooter);
+  drawFooter();
 
   doc.font("Helvetica-Bold").fontSize(18).text(exam.title, { align: "center" });
   doc.moveDown(0.4);
@@ -163,22 +183,40 @@ async function generatePdfBuffer(
 }
 
 function buildAnswerKeyCsv(
+  exam: Exam,
   variants: ExamVariant[],
   questionMap: Map<string, Question>
 ): string {
-  const lines = ["examId,variantId,questionId,correctChoiceIds"];
+  if (variants.length === 0) {
+    return "exam-id\n";
+  }
+  const questionCount = variants[0].questions.length;
+  const header = [
+    "exam-id",
+    ...Array.from({ length: questionCount }, (_, index) => `question${index + 1}-answer`)
+  ];
+  const lines = [header.join(",")];
+
   variants.forEach((variant) => {
-    variant.questions.forEach((entry) => {
+    const answers = variant.questions.map((entry) => {
       const question = questionMap.get(entry.questionId);
       if (!question) {
-        return;
+        return "";
       }
-      lines.push(
-        `${variant.examId},${variant.variantId},${question.id},${question.correctChoiceIds.join(
-          "|"
-        )}`
-      );
+      const correctLabels = question.correctChoiceIds
+        .map((choiceId) => entry.shuffledChoiceIds.indexOf(choiceId))
+        .filter((choiceIndex) => choiceIndex >= 0)
+        .map((choiceIndex) => labelForChoice(choiceIndex, exam.answerLabelingMode));
+      if (exam.answerLabelingMode === "powersOfTwo") {
+        const sum = correctLabels.reduce(
+          (total, value) => total + Number.parseInt(value, 10),
+          0
+        );
+        return String(sum);
+      }
+      return correctLabels.join("|");
     });
+    lines.push([variant.examNumber, ...answers].join(","));
   });
   return `${lines.join("\n")}\n`;
 }
@@ -343,14 +381,15 @@ router.post("/:id/pdf-zip", async (req, res) => {
   const variants: ExamVariant[] = [];
 
   for (let i = 0; i < copies; i += 1) {
-    variants.push(createVariant(exam, examQuestions));
+    const examNumber = createSequentialExamNumber(i + 1);
+    variants.push(createVariant(exam, examQuestions, examNumber));
   }
 
   const pdfBuffers = await Promise.all(
     variants.map((variant) => generatePdfBuffer(exam, variant, questionMap))
   );
 
-  const answerKeyCsv = buildAnswerKeyCsv(variants, questionMap);
+  const answerKeyCsv = buildAnswerKeyCsv(exam, variants, questionMap);
   const examSlug = slugify(exam.title) || exam.id;
   const institutionSlug = institution ? `-${slugify(institution)}` : "";
   const fileBase = `exam-${examSlug}${institutionSlug}`;
@@ -419,7 +458,7 @@ router.post("/:id/answer-key", async (req, res) => {
   const questions = await getQuestions();
   const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-  const csvContent = buildAnswerKeyCsv([variant], questionMap);
+  const csvContent = buildAnswerKeyCsv(exam, [variant], questionMap);
 
   res.setHeader("Content-Type", "text/csv");
   res.setHeader(

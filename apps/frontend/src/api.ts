@@ -165,10 +165,24 @@ export async function downloadPdfZip(
 export async function uploadCorrections(payload: {
   keyCsv: File;
   answersCsv: File;
-}): Promise<{ examId: string; variantId: string; results: any[] }> {
+  mode: "strict" | "lenient";
+}): Promise<{
+  results: {
+    examNumber: string;
+    studentId: string;
+    score: number;
+    details: {
+      questionId: string;
+      isCorrect: boolean;
+      selectedChoiceIds: string[];
+      pointsAwarded?: number;
+    }[];
+  }[];
+}> {
   const formData = new FormData();
   formData.append("keyCsv", payload.keyCsv);
   formData.append("answersCsv", payload.answersCsv);
+  formData.append("mode", payload.mode);
 
   const res = await fetch(`${BASE}/corrections`, {
     method: "POST",
