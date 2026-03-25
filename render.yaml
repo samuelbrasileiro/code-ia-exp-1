@@ -17,8 +17,9 @@ services:
       mountPath: /var/data
       sizeGB: 1
 
-  - type: static_site
+  - type: web
     name: exam-builder-frontend
+    runtime: static
     plan: free
     rootDir: .
     buildCommand: npm install && npm -w apps/frontend run build
