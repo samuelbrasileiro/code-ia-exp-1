@@ -1,10 +1,18 @@
 import { Router } from "express";
 import { z } from "zod";
 import PDFDocument from "pdfkit";
-import type { Exam, ExamVariant, Question } from "../../../packages/shared/src/types.js";
+import archiver from "archiver";
+import { PassThrough } from "node:stream";
+import type {
+  Exam,
+  ExamVariant,
+  PdfGenerationRecord,
+  Question
+} from "../../../packages/shared/src/types.js";
 import { createId } from "../utils/id.js";
 import { getExams, saveExams } from "../store/examsStore.js";
 import { getQuestions } from "../store/questionsStore.js";
+import { appendPdfHistory, getPdfHistory } from "../store/pdfHistoryStore.js";
 import { createVariant } from "../services/variant.js";
 
 const router = Router();
@@ -31,11 +39,24 @@ const variantSchema: z.ZodType<ExamVariant> = z.object({
     .min(1)
 });
 
+const pdfZipSchema = z.object({
+  copies: z.number().int().min(1).max(100),
+  institution: z.string().trim().optional()
+});
+
 function labelForChoice(index: number, mode: Exam["answerLabelingMode"]): string {
   if (mode === "powersOfTwo") {
     return String(2 ** index);
   }
   return String.fromCharCode(65 + index);
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-_]/g, "");
 }
 
 async function validateQuestionIds(questionIds: string[]) {
@@ -46,6 +67,120 @@ async function validateQuestionIds(questionIds: string[]) {
     return missing;
   }
   return [];
+}
+
+function renderExamPdf(
+  doc: PDFDocument,
+  exam: Exam,
+  variant: ExamVariant,
+  questionMap: Map<string, Question>
+) {
+  const pageWidth = doc.page.width;
+  const left = doc.page.margins.left;
+  const right = pageWidth - doc.page.margins.right;
+  const contentWidth = right - left;
+
+  const drawSectionDivider = () => {
+    const y = doc.y;
+    doc
+      .strokeColor("#DDDDDD")
+      .lineWidth(1)
+      .moveTo(left, y)
+      .lineTo(right, y)
+      .stroke();
+    doc.moveDown(0.6);
+    doc.strokeColor("#000000");
+  };
+
+  const drawAnswerLine = (mode: Exam["answerLabelingMode"]) => {
+    const label = mode === "powersOfTwo" ? "Sum:" : "Answer:";
+    doc.fontSize(11).fillColor("#333333").text(label, { continued: true });
+
+    const startX = doc.x + 6;
+    const y = doc.y + 2;
+    const lineWidth = mode === "powersOfTwo" ? contentWidth * 0.5 : contentWidth * 0.35;
+    doc
+      .strokeColor("#333333")
+      .lineWidth(1)
+      .moveTo(startX, y)
+      .lineTo(startX + lineWidth, y)
+      .stroke();
+    doc.fillColor("#000000");
+    doc.moveDown(0.8);
+  };
+
+  doc.font("Helvetica-Bold").fontSize(18).text(exam.title, { align: "center" });
+  doc.moveDown(0.4);
+  doc.font("Helvetica").fontSize(11).fillColor("#555555");
+  doc.text(`Subject: ${exam.subject}`);
+  doc.text(`Teacher: ${exam.teacher}`);
+  doc.text(`Date: ${exam.date}`);
+  doc.text(`Answer labels: ${exam.answerLabelingMode === "letters" ? "Letters" : "Powers of Two"}`);
+  doc.fillColor("#000000");
+  doc.moveDown(0.6);
+  drawSectionDivider();
+
+  variant.questions.forEach((entry, index) => {
+    const question = questionMap.get(entry.questionId);
+    if (!question) {
+      return;
+    }
+    doc.font("Helvetica-Bold").fontSize(12).text(`${index + 1}. ${question.prompt}`);
+    doc.font("Helvetica");
+    doc.moveDown(0.35);
+
+    const choices = entry.shuffledChoiceIds
+      .map((choiceId) => question.choices.find((c) => c.id === choiceId))
+      .filter(Boolean) as Question["choices"];
+
+    choices.forEach((choice, choiceIndex) => {
+      const label = labelForChoice(choiceIndex, exam.answerLabelingMode);
+      doc.text(`   ${label}. ${choice.text}`, {
+        indent: 12
+      });
+    });
+    doc.moveDown(0.4);
+    drawAnswerLine(exam.answerLabelingMode);
+    drawSectionDivider();
+  });
+}
+
+async function generatePdfBuffer(
+  exam: Exam,
+  variant: ExamVariant,
+  questionMap: Map<string, Question>
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+
+    renderExamPdf(doc, exam, variant, questionMap);
+    doc.end();
+  });
+}
+
+function buildAnswerKeyCsv(
+  variants: ExamVariant[],
+  questionMap: Map<string, Question>
+): string {
+  const lines = ["examId,variantId,questionId,correctChoiceIds"];
+  variants.forEach((variant) => {
+    variant.questions.forEach((entry) => {
+      const question = questionMap.get(entry.questionId);
+      if (!question) {
+        return;
+      }
+      lines.push(
+        `${variant.examId},${variant.variantId},${question.id},${question.correctChoiceIds.join(
+          "|"
+        )}`
+      );
+    });
+  });
+  return `${lines.join("\n")}\n`;
 }
 
 router.get("/", async (_req, res) => {
@@ -181,77 +316,93 @@ router.post("/:id/pdf", async (req, res) => {
 
   const doc = new PDFDocument({ margin: 50, size: "A4" });
   doc.pipe(res);
+  renderExamPdf(doc, exam, variant, questionMap);
+  doc.end();
+});
 
-  const pageWidth = doc.page.width;
-  const left = doc.page.margins.left;
-  const right = pageWidth - doc.page.margins.right;
-  const contentWidth = right - left;
+router.post("/:id/pdf-zip", async (req, res) => {
+  const parsed = pdfZipSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
 
-  const drawSectionDivider = () => {
-    const y = doc.y;
-    doc
-      .strokeColor("#DDDDDD")
-      .lineWidth(1)
-      .moveTo(left, y)
-      .lineTo(right, y)
-      .stroke();
-    doc.moveDown(0.6);
-    doc.strokeColor("#000000");
-  };
+  const { copies, institution } = parsed.data;
+  const exams = await getExams();
+  const exam = exams.find((item) => item.id === req.params.id);
+  if (!exam) {
+    return res.status(404).json({ error: "Exam not found" });
+  }
 
-  const drawAnswerLine = (mode: Exam["answerLabelingMode"]) => {
-    const label = mode === "powersOfTwo" ? "Sum:" : "Answer:";
-    doc.fontSize(11).fillColor("#333333").text(label, { continued: true });
+  const questions = await getQuestions();
+  const examQuestions = questions.filter((q) => exam.questionIds.includes(q.id));
+  if (examQuestions.length === 0) {
+    return res.status(400).json({ error: "Exam has no questions" });
+  }
 
-    const startX = doc.x + 6;
-    const y = doc.y + 2;
-    const lineWidth = mode === "powersOfTwo" ? contentWidth * 0.5 : contentWidth * 0.35;
-    doc
-      .strokeColor("#333333")
-      .lineWidth(1)
-      .moveTo(startX, y)
-      .lineTo(startX + lineWidth, y)
-      .stroke();
-    doc.fillColor("#000000");
-    doc.moveDown(0.8);
-  };
+  const questionMap = new Map(questions.map((q) => [q.id, q]));
+  const variants: ExamVariant[] = [];
 
-  doc.font("Helvetica-Bold").fontSize(18).text(exam.title, { align: "center" });
-  doc.moveDown(0.4);
-  doc.font("Helvetica").fontSize(11).fillColor("#555555");
-  doc.text(`Subject: ${exam.subject}`);
-  doc.text(`Teacher: ${exam.teacher}`);
-  doc.text(`Date: ${exam.date}`);
-  doc.text(`Answer labels: ${exam.answerLabelingMode === "letters" ? "Letters" : "Powers of Two"}`);
-  doc.fillColor("#000000");
-  doc.moveDown(0.6);
-  drawSectionDivider();
+  for (let i = 0; i < copies; i += 1) {
+    variants.push(createVariant(exam, examQuestions));
+  }
 
-  variant.questions.forEach((entry, index) => {
-    const question = questionMap.get(entry.questionId);
-    if (!question) {
-      return;
-    }
-    doc.font("Helvetica-Bold").fontSize(12).text(`${index + 1}. ${question.prompt}`);
-    doc.font("Helvetica");
-    doc.moveDown(0.35);
+  const pdfBuffers = await Promise.all(
+    variants.map((variant) => generatePdfBuffer(exam, variant, questionMap))
+  );
 
-    const choices = entry.shuffledChoiceIds
-      .map((choiceId) => question.choices.find((c) => c.id === choiceId))
-      .filter(Boolean) as Question["choices"];
+  const answerKeyCsv = buildAnswerKeyCsv(variants, questionMap);
+  const examSlug = slugify(exam.title) || exam.id;
+  const institutionSlug = institution ? `-${slugify(institution)}` : "";
+  const fileBase = `exam-${examSlug}${institutionSlug}`;
 
-    choices.forEach((choice, choiceIndex) => {
-      const label = labelForChoice(choiceIndex, exam.answerLabelingMode);
-      doc.text(`   ${label}. ${choice.text}`, {
-        indent: 12
-      });
+  const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    const stream = new PassThrough();
+    const chunks: Buffer[] = [];
+
+    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+    archive.on("error", reject);
+
+    archive.pipe(stream);
+
+    pdfBuffers.forEach((buffer, index) => {
+      archive.append(buffer, { name: `${fileBase}-${index + 1}.pdf` });
     });
-    doc.moveDown(0.4);
-    drawAnswerLine(exam.answerLabelingMode);
-    drawSectionDivider();
+
+    archive.append(answerKeyCsv, { name: `answer-key-${examSlug}${institutionSlug}.csv` });
+
+    void archive.finalize();
   });
 
-  doc.end();
+  const record: PdfGenerationRecord = {
+    id: createId(),
+    examId: exam.id,
+    examTitle: exam.title,
+    subject: exam.subject,
+    teacher: exam.teacher,
+    date: exam.date,
+    answerLabelingMode: exam.answerLabelingMode,
+    copies,
+    variantIds: variants.map((variant) => variant.variantId),
+    institution: institution?.trim() || undefined,
+    createdAt: new Date().toISOString()
+  };
+
+  await appendPdfHistory(record);
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${fileBase}.zip"`
+  );
+  res.send(zipBuffer);
+});
+
+router.get("/:id/pdf-history", async (req, res) => {
+  const history = await getPdfHistory();
+  res.json(history.filter((record) => record.examId === req.params.id));
 });
 
 router.post("/:id/answer-key", async (req, res) => {
@@ -268,23 +419,14 @@ router.post("/:id/answer-key", async (req, res) => {
   const questions = await getQuestions();
   const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-  const lines = ["examId,variantId,questionId,correctChoiceIds"];
-  variant.questions.forEach((entry) => {
-    const question = questionMap.get(entry.questionId);
-    if (!question) {
-      return;
-    }
-    lines.push(
-      `${variant.examId},${variant.variantId},${question.id},${question.correctChoiceIds.join("|")}`
-    );
-  });
+  const csvContent = buildAnswerKeyCsv([variant], questionMap);
 
   res.setHeader("Content-Type", "text/csv");
   res.setHeader(
     "Content-Disposition",
     `attachment; filename="answer-key-${variant.examId}-${variant.variantId}.csv"`
   );
-  res.send(`${lines.join("\n")}\n`);
+  res.send(csvContent);
 });
 
 export default router;

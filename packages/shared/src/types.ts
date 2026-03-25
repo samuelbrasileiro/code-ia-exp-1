@@ -54,3 +54,17 @@ export type CorrectionResult = {
     selectedChoiceIds: string[];
   }[];
 };
+
+export type PdfGenerationRecord = {
+  id: string;
+  examId: string;
+  examTitle: string;
+  subject: string;
+  teacher: string;
+  date: string;
+  answerLabelingMode: AnswerLabelingMode;
+  copies: number;
+  variantIds: string[];
+  institution?: string;
+  createdAt: string;
+};

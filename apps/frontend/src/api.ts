@@ -147,6 +147,21 @@ export async function downloadAnswerKey(
   return res.blob();
 }
 
+export async function downloadPdfZip(
+  examId: string,
+  payload: { copies: number; institution?: string }
+): Promise<Blob> {
+  const res = await fetch(`${BASE}/exams/${examId}/pdf-zip`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    throw new Error("Failed to generate PDF zip");
+  }
+  return res.blob();
+}
+
 export async function uploadCorrections(payload: {
   keyCsv: File;
   answersCsv: File;
