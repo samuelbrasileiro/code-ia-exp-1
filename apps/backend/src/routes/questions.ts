@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Question } from "../../../packages/shared/src/types.js";
+import type { Question } from "@exam/shared";
 import { createId } from "../utils/id.js";
 import { getQuestions, saveQuestions } from "../store/questionsStore.js";
 

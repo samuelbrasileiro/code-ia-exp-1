@@ -1,4 +1,4 @@
-import type { AnswerLabelingMode, Exam } from "../../../packages/shared/src/types.js";
+import type { AnswerLabelingMode, Exam } from "@exam/shared";
 import { readJson, writeJson } from "./fileStore.js";
 
 const FILE = "exams.json";

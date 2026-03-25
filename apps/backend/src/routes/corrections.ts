@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
-import type { CorrectionResult } from "../../../packages/shared/src/types.js";
+import type { CorrectionResult } from "@exam/shared";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });

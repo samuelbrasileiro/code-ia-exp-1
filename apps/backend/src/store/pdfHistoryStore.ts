@@ -1,4 +1,4 @@
-import type { PdfGenerationRecord } from "../../../packages/shared/src/types.js";
+import type { PdfGenerationRecord } from "@exam/shared";
 import { readJson, writeJson } from "./fileStore.js";
 
 const FILE = "pdf-history.json";

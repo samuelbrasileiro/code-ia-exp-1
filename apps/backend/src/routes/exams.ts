@@ -8,7 +8,7 @@ import type {
   ExamVariant,
   PdfGenerationRecord,
   Question
-} from "../../../packages/shared/src/types.js";
+} from "@exam/shared";
 import { createId } from "../utils/id.js";
 import { getExams, saveExams } from "../store/examsStore.js";
 import { getQuestions } from "../store/questionsStore.js";
@@ -71,7 +71,7 @@ async function validateQuestionIds(questionIds: string[]) {
 }
 
 function renderExamPdf(
-  doc: PDFDocument,
+  doc: PDFKit.PDFDocument,
   exam: Exam,
   variant: ExamVariant,
   questionMap: Map<string, Question>

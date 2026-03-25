@@ -1,4 +1,4 @@
-import type { Exam, ExamVariant, Question } from "../../../packages/shared/src/types.js";
+import type { Exam, ExamVariant, Question } from "@exam/shared";
 import { createId } from "../utils/id.js";
 
 function formatExamNumber(value: number): string {

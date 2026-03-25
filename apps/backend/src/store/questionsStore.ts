@@ -1,4 +1,4 @@
-import type { Question } from "../../../packages/shared/src/types.js";
+import type { Question } from "@exam/shared";
 import { readJson, writeJson } from "./fileStore.js";
 
 const FILE = "questions.json";
