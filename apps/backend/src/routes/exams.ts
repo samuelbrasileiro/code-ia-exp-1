@@ -135,6 +135,48 @@ function renderExamPdf(
     doc.moveDown(1);
   };
 
+  const drawStudentInfoArea = () => {
+    const areaHeight = 70;
+    const availableBottom = pageHeight - doc.page.margins.bottom - 20;
+    if (doc.y > availableBottom - areaHeight) {
+      doc.addPage();
+    }
+
+    doc.moveDown(0.5);
+    drawSectionDivider();
+
+    const lineGap = 10;
+    const labelWidth = doc.widthOfString("Name:");
+    const cpfLabelWidth = doc.widthOfString("CPF:");
+    const lineStartX = left + labelWidth + lineGap;
+    const lineEndX = right;
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#333333");
+    const nameY = doc.y;
+    doc.text("Name:", left, nameY, { lineBreak: false });
+    const nameLineY = nameY + doc.currentLineHeight() * 0.85;
+    doc
+      .strokeColor("#333333")
+      .lineWidth(1)
+      .moveTo(lineStartX, nameLineY)
+      .lineTo(lineEndX, nameLineY)
+      .stroke();
+
+    const cpfY = nameY + doc.currentLineHeight() * 1.6;
+    const cpfX = left + labelWidth - cpfLabelWidth;
+    doc.text("CPF:", cpfX, cpfY, { lineBreak: false });
+    const cpfLineY = cpfY + doc.currentLineHeight() * 0.85;
+    doc
+      .strokeColor("#333333")
+      .lineWidth(1)
+      .moveTo(lineStartX, cpfLineY)
+      .lineTo(lineEndX, cpfLineY)
+      .stroke();
+
+    doc.fillColor("#000000");
+    doc.y = cpfY + doc.currentLineHeight() * 1.2;
+  };
+
   doc.on("pageAdded", () => {
     drawPageBackground();
     drawFooter();
@@ -176,6 +218,8 @@ function renderExamPdf(
     drawAnswerLine(exam.answerLabelingMode);
     drawSectionDivider();
   });
+
+  drawStudentInfoArea();
 }
 
 async function generatePdfBuffer(
