@@ -17,7 +17,7 @@ services:
       mountPath: /var/data
       sizeGB: 1
 
-  - type: static
+  - type: static_site
     name: exam-builder-frontend
     plan: free
     rootDir: .
