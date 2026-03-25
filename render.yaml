@@ -14,7 +14,6 @@ services:
   - type: web
     name: exam-builder-frontend
     runtime: static
-    plan: free
     rootDir: .
     buildCommand: npm install && npm -w apps/frontend run build
     staticPublishPath: apps/frontend/dist
