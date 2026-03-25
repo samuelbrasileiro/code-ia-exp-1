@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: exam-builder-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm -w apps/backend run build
+    startCommand: npm -w apps/backend run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: static
+    name: exam-builder-frontend
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm -w apps/frontend run build
+    staticPublishPath: apps/frontend/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://exam-builder-backend.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
