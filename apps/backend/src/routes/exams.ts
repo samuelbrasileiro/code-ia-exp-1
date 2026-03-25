@@ -450,6 +450,12 @@ router.post("/:id/answer-key", async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
+  const exams = await getExams();
+  const exam = exams.find((item) => item.id === req.params.id);
+  if (!exam) {
+    return res.status(404).json({ error: "Exam not found" });
+  }
+
   const variant = parsed.data;
   if (variant.examId !== req.params.id) {
     return res.status(400).json({ error: "Variant does not match exam" });

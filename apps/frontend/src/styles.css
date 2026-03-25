@@ -949,3 +949,55 @@ button.cta {
   background: #fee2e2;
   color: #991b1b;
 }
+
+.grade-detail-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.grade-detail-list h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.grade-detail-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.25rem 0.4rem;
+  background: white;
+}
+
+.grade-detail-card summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem 0.6rem;
+}
+
+.grade-detail-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.grade-detail-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.grade-detail-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+.grade-detail-body {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem;
+}
+
+.grade-table--compact th,
+.grade-table--compact td {
+  padding: 0.55rem 0.65rem;
+  font-size: 0.85rem;
+}

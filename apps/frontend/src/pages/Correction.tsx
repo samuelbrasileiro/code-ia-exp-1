@@ -11,6 +11,7 @@ type CorrectionResponse = {
       questionId: string;
       isCorrect: boolean;
       selectedChoiceIds: string[];
+      expectedChoiceIds: string[];
       pointsAwarded?: number;
     }[];
   }[];
@@ -91,6 +92,10 @@ export default function Correction() {
     });
     downloadCsv(`${lines.join("\n")}\n`, "relatorio_notas.csv");
     setStatus("Report exported successfully.");
+  }
+
+  function formatChoices(values: string[]) {
+    return values.length > 0 ? values.join(", ") : "—";
   }
 
   return (
@@ -292,6 +297,77 @@ export default function Correction() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="grade-detail-list">
+                <h3>Detailed Results</h3>
+                {result.results.map((item) => {
+                  const maxScore = item.details.length;
+                  const percentage = maxScore === 0 ? 0 : (item.score / maxScore) * 100;
+                  return (
+                    <details
+                      key={`detail-${item.studentId}-${item.examNumber}`}
+                      className="grade-detail-card"
+                    >
+                      <summary>
+                        <div className="grade-detail-summary">
+                          <div>
+                            <strong>CPF {item.studentId}</strong>
+                            <div className="grade-detail-meta">
+                              Exam {item.examNumber} • Score {item.score.toFixed(2)} /{" "}
+                              {maxScore}
+                            </div>
+                          </div>
+                          <span
+                            className={
+                              percentage >= 70
+                                ? "grade-pill grade-pill--ok"
+                                : percentage >= 50
+                                ? "grade-pill grade-pill--mid"
+                                : "grade-pill grade-pill--bad"
+                            }
+                          >
+                            {percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </summary>
+                      <div className="grade-detail-body">
+                        <table className="grade-table grade-table--compact">
+                          <thead>
+                            <tr>
+                              <th>Question</th>
+                              <th>Correct Answer</th>
+                              <th>Student Answer</th>
+                              <th>Points</th>
+                              <th>Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {item.details.map((detail) => (
+                              <tr key={`${item.studentId}-${detail.questionId}`}>
+                                <td>{detail.questionId}</td>
+                                <td>{formatChoices(detail.expectedChoiceIds)}</td>
+                                <td>{formatChoices(detail.selectedChoiceIds)}</td>
+                                <td>{(detail.pointsAwarded ?? 0).toFixed(2)}</td>
+                                <td>
+                                  <span
+                                    className={
+                                      detail.isCorrect
+                                        ? "grade-pill grade-pill--ok"
+                                        : "grade-pill grade-pill--bad"
+                                    }
+                                  >
+                                    {detail.isCorrect ? "Correct" : "Incorrect"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
         </div>

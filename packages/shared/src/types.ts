@@ -54,6 +54,7 @@ export type CorrectionResult = {
     questionId: string;
     isCorrect: boolean;
     selectedChoiceIds: string[];
+    expectedChoiceIds: string[];
     pointsAwarded?: number;
   }[];
 };

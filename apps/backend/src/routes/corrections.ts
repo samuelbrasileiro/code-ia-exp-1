@@ -60,6 +60,23 @@ function parseNumericSum(value: string | undefined): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+function decomposeToPowersOfTwo(value: number): string[] {
+  if (!Number.isFinite(value) || value <= 0) {
+    return [];
+  }
+  const parts: string[] = [];
+  let remaining = Math.floor(value);
+  let bit = 1;
+  while (remaining > 0) {
+    if (remaining & 1) {
+      parts.push(String(bit));
+    }
+    remaining >>= 1;
+    bit <<= 1;
+  }
+  return parts;
+}
+
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
     return false;
@@ -176,18 +193,32 @@ router.post(
         let isCorrect = false;
         let selected: string[] = [];
         let pointsAwarded = 0;
+        let expectedChoiceIds: string[] = [];
 
         if (expectedSum !== null) {
           const selectedSum = parseNumericSum(answerValue);
           isCorrect = selectedSum !== null && selectedSum === expectedSum;
           if (selectedSum !== null) {
-            selected = [String(selectedSum)];
+            selected = decomposeToPowersOfTwo(selectedSum);
           }
-          pointsAwarded = isCorrect ? 1 : 0;
+          expectedChoiceIds = decomposeToPowersOfTwo(expectedSum);
+          if (isCorrect) {
+            pointsAwarded = 1;
+          } else if (mode === "lenient") {
+            const expectedSetValues = new Set(expectedChoiceIds);
+            const selectedSet = new Set(selected);
+            const intersectionSize = [...selectedSet].filter((item) =>
+              expectedSetValues.has(item)
+            ).length;
+            const unionSize = new Set([...expectedChoiceIds, ...selected]).size;
+            pointsAwarded = unionSize === 0 ? 0 : intersectionSize / unionSize;
+            pointsAwarded = clamp(pointsAwarded, 0, 1);
+          }
         } else {
           const expected = parseDelimited(expectedValue);
           selected = parseDelimited(answerValue);
           isCorrect = sameSet(selected, expected);
+          expectedChoiceIds = expected;
           if (isCorrect) {
             pointsAwarded = 1;
           } else if (mode === "lenient") {
@@ -207,6 +238,7 @@ router.post(
           questionId: `Q${index + 1}`,
           isCorrect,
           selectedChoiceIds: selected,
+          expectedChoiceIds,
           pointsAwarded
         };
       });

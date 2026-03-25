@@ -175,6 +175,7 @@ export async function uploadCorrections(payload: {
       questionId: string;
       isCorrect: boolean;
       selectedChoiceIds: string[];
+      expectedChoiceIds: string[];
       pointsAwarded?: number;
     }[];
   }[];
