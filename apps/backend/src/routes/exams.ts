@@ -77,9 +77,16 @@ function renderExamPdf(
   questionMap: Map<string, Question>
 ) {
   const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
   const left = doc.page.margins.left;
   const right = pageWidth - doc.page.margins.right;
   const contentWidth = right - left;
+
+  const drawPageBackground = () => {
+    doc.save();
+    doc.rect(0, 0, pageWidth, pageHeight).fill("#FFFFFF");
+    doc.restore();
+  };
 
   const drawFooter = () => {
     const currentX = doc.x;
@@ -113,20 +120,26 @@ function renderExamPdf(
     const label = mode === "powersOfTwo" ? "Sum:" : "Answer:";
     doc.fontSize(11).fillColor("#333333").text(label, { continued: true });
 
-    const startX = doc.x + 6;
-    const y = doc.y + 2;
+    const labelWidth = doc.widthOfString(label);
+    const gap = 12;
+    const startX = left + labelWidth + gap;
+    const lineY = doc.y + doc.currentLineHeight() * 0.75;
     const lineWidth = mode === "powersOfTwo" ? contentWidth * 0.5 : contentWidth * 0.35;
     doc
       .strokeColor("#333333")
       .lineWidth(1)
-      .moveTo(startX, y)
-      .lineTo(startX + lineWidth, y)
+      .moveTo(startX, lineY)
+      .lineTo(startX + lineWidth, lineY)
       .stroke();
     doc.fillColor("#000000");
-    doc.moveDown(0.8);
+    doc.moveDown(1);
   };
 
-  doc.on("pageAdded", drawFooter);
+  doc.on("pageAdded", () => {
+    drawPageBackground();
+    drawFooter();
+  });
+  drawPageBackground();
   drawFooter();
 
   doc.font("Helvetica-Bold").fontSize(18).text(exam.title, { align: "center" });
