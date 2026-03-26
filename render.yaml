@@ -3,7 +3,7 @@ services:
     name: exam-builder-backend
     runtime: node
     plan: free
-    rootDir: .
+    rootDir: sistema
     buildCommand: npm install && npm -w apps/backend run build
     startCommand: npm -w apps/backend run start
     healthCheckPath: /health
@@ -14,7 +14,7 @@ services:
   - type: web
     name: exam-builder-frontend
     runtime: static
-    rootDir: .
+    rootDir: sistema
     buildCommand: npm install && npm -w apps/frontend run build
     staticPublishPath: apps/frontend/dist
     routes:
