@@ -12,10 +12,10 @@ Create multiple-choice exams, generate randomized PDF variants, export answer ke
 
 **Tech Stack**
 - Frontend: React 18, Vite, React Router
-- Backend: Node.js, Express
+- Backend: Node.js, Express, Zod validation
 - PDF/ZIP: PDFKit, Archiver
 - CSV parsing: csv-parse
-- Tests: Cucumber (acceptance tests)
+- Tests: Cucumber (acceptance tests), Supertest
 - Storage: JSON files on disk (`data/` by default)
 
 **Project Structure**
@@ -32,17 +32,26 @@ Prerequisites
 
 Install
 ```bash
+cd sistema
 npm install
 ```
 
-Run (dev)
+Run Backend (dev)
 ```bash
 npm run dev:backend
 ```
+
+Run Frontend (dev)
 ```bash
 npm run dev:frontend
 ```
 
+Run Acceptance Tests
+```bash
+npm run test:acceptance
+```
+
+Local URLs
 - Backend: `http://localhost:3000`
 - Frontend: `http://localhost:5173`
 
@@ -51,17 +60,25 @@ Build (production)
 npm run build
 ```
 
-Backend
+Backend (production)
 ```bash
 npm -w apps/backend run build
 npm -w apps/backend run start
 ```
 
-Frontend
+Frontend (production)
 ```bash
 npm -w apps/frontend run build
 npm -w apps/frontend run preview
 ```
+
+Deployment (Render)
+- Frontend: `https://exam-builder-frontend.onrender.com`
+- Backend: `https://exam-builder-backend.onrender.com`
+
+Configuration
+- `PORT`: backend port (default `3000`)
+- `DATA_DIR`: directory for JSON data files (default `./data` at repo root)
 
 Acceptance Tests
 - Location: `apps/backend/features`
